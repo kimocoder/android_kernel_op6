@@ -26,6 +26,7 @@
 struct btqcomsmd {
 	struct hci_dev *hdev;
 
+	const bdaddr_t *addr;
 	struct qcom_smd_channel *acl_channel;
 	struct qcom_smd_channel *cmd_channel;
 };
@@ -101,6 +102,27 @@ static int btqcomsmd_close(struct hci_dev *hdev)
 	return 0;
 }
 
+static int btqcomsmd_setup(struct hci_dev *hdev)
+{
+	struct btqcomsmd *btq = hci_get_drvdata(hdev);
+	struct sk_buff *skb;
+
+	skb = __hci_cmd_sync(hdev, HCI_OP_RESET, 0, NULL, HCI_INIT_TIMEOUT);
+	if (IS_ERR(skb))
+		return PTR_ERR(skb);
+	kfree_skb(skb);
+
+	if (btq->addr) {
+		bdaddr_t bdaddr;
+
+		/* btq->addr stored with most significant byte first */
+		baswap(&bdaddr, btq->addr);
+		return qca_set_bdaddr_rome(hdev, &bdaddr);
+	}
+
+	return 0;
+}
+
 static int btqcomsmd_probe(struct platform_device *pdev)
 {
 	struct btqcomsmd *btq;
@@ -124,8 +146,13 @@ static int btqcomsmd_probe(struct platform_device *pdev)
 	if (IS_ERR(btq->cmd_channel))
 		return PTR_ERR(btq->cmd_channel);
 
-	qcom_smd_set_drvdata(btq->acl_channel, btq);
-	qcom_smd_set_drvdata(btq->cmd_channel, btq);
+	btq->addr = of_get_property(pdev->dev.of_node, "local-mac-address",
+				    &ret);
+	if (ret != sizeof(bdaddr_t))
+		btq->addr = NULL;
+
+        qcom_smd_set_drvdata(btq->acl_channel, btq);
+        qcom_smd_set_drvdata(btq->cmd_channel, btq);
 
 	hdev = hci_alloc_dev();
 	if (!hdev)
@@ -139,6 +166,7 @@ static int btqcomsmd_probe(struct platform_device *pdev)
 	hdev->open = btqcomsmd_open;
 	hdev->close = btqcomsmd_close;
 	hdev->send = btqcomsmd_send;
+	hdev->setup = btqcomsmd_setup;
 	hdev->set_bdaddr = qca_set_bdaddr_rome;
 
 	ret = hci_register_dev(hdev);
