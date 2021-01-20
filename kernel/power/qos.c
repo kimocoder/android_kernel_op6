@@ -534,7 +534,7 @@ bool pm_qos_update_flags(struct pm_qos_flags *pqf,
 
 	curr_value = list_empty(&pqf->list) ? 0 : pqf->effective_flags;
 
-	spin_unlock(&pm_qos_lock, irqflags);
+	spin_unlock(&pm_qos_lock);
 
 	trace_pm_qos_update_flags(action, prev_value, curr_value);
 	return prev_value != curr_value;
@@ -573,7 +573,7 @@ int pm_qos_request_for_cpumask(int pm_qos_class, struct cpumask *mask)
 	struct pm_qos_constraints *c = NULL;
 	int val;
 
-	spin_lock(&pm_qos_lock, irqflags);
+	spin_lock(&pm_qos_lock);
 	c = pm_qos_array[pm_qos_class]->constraints;
 	val = c->default_value;
 
@@ -593,7 +593,7 @@ int pm_qos_request_for_cpumask(int pm_qos_class, struct cpumask *mask)
 			break;
 		}
 	}
-	spin_unlock(&pm_qos_lock, irqflags);
+	spin_unlock(&pm_qos_lock);
 
 	return val;
 }

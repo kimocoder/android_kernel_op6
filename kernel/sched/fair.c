@@ -7573,15 +7573,11 @@ static int select_energy_cpu_brute(struct task_struct *p, int prev_cpu, int sync
 
 	if (sysctl_sched_sync_hint_enable && sync) {
 		int cpu = smp_processor_id();
-		/* Curtis, 20180111, ux realm*/
-		if (bias_to_waker_cpu(p, cpu, rtg_target) &&
-			(!is_uxtop || cpu >= FIRST_BIG_CORE)) {
-			schedstat_inc(p->se.statistics.nr_wakeups_secb_sync);
-			schedstat_inc(this_rq()->eas_stats.secb_sync);
-			target_cpu = cpu;
-			fastpath = SYNC_WAKEUP;
-			goto out;
-		}
+		schedstat_inc(p->se.statistics.nr_wakeups_secb_sync);
+		schedstat_inc(this_rq()->eas_stats.secb_sync);
+		target_cpu = cpu;
+		fastpath = SYNC_WAKEUP;
+		goto out;
 	}
 
 	if (bias_to_prev_cpu(p, rtg_target)) {
@@ -7590,7 +7586,6 @@ static int select_energy_cpu_brute(struct task_struct *p, int prev_cpu, int sync
 		goto out;
 	}
 
-	/* Curtis, 20180111, ux realm*/
 	if (fbt_env.op_path >= 0)
 		sd = rcu_dereference(per_cpu(sd_ea, fbt_env.op_path));
 	else
